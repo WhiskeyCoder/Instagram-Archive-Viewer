@@ -1,0 +1,1853 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Browse your saved Instagram videos offline — library, reels, and more">
+    <meta name="theme-color" content="#E1306C">
+    <title>Instagram Video Viewer</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root, [data-theme="dark"] {
+            --bg: #000;
+            --bg-elevated: #121212;
+            --bg-card: #1a1a1a;
+            --bg-hover: #262626;
+            --border: #363636;
+            --text: #f5f5f5;
+            --text-secondary: #a8a8a8;
+            --text-muted: #737373;
+            --accent: #E1306C;
+            --accent-2: #F77737;
+            --accent-3: #833AB4;
+            --gradient: linear-gradient(45deg, #833AB4, #E1306C, #F77737);
+            --danger: #ed4956;
+            --shadow: rgba(0,0,0,0.5);
+        }
+
+        [data-theme="light"] {
+            --bg: #fafafa;
+            --bg-elevated: #fff;
+            --bg-card: #fff;
+            --bg-hover: #efefef;
+            --border: #dbdbdb;
+            --text: #262626;
+            --text-secondary: #737373;
+            --text-muted: #a8a8a8;
+            --shadow: rgba(0,0,0,0.12);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .app { display: flex; flex-direction: column; height: 100vh; }
+
+        /* Header */
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            z-index: 50;
+        }
+
+        .logo {
+            font-size: 18px;
+            font-weight: 700;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            white-space: nowrap;
+        }
+
+        .header-search {
+            flex: 1;
+            max-width: 360px;
+            position: relative;
+        }
+
+        .header-search input {
+            width: 100%;
+            padding: 8px 12px 8px 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-hover);
+            color: var(--text);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .header-search input:focus { border-color: var(--accent); }
+        .header-search::before {
+            content: '⌕';
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: auto;
+        }
+
+        .btn {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: none;
+            background: var(--gradient);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: opacity 0.15s, transform 0.1s;
+        }
+
+        .btn:hover { opacity: 0.9; }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+        .btn-ghost {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .btn-ghost:hover { background: var(--bg-hover); border-color: var(--text-muted); }
+
+        .btn-ghost.active {
+            background: var(--bg-hover);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-danger { background: var(--danger); }
+        .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+        .btn-reels {
+            background: var(--gradient);
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+
+        .status-bar {
+            padding: 6px 16px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+
+        .status-bar.loading { color: var(--accent-2); }
+
+        /* Main layout */
+        .main { display: flex; flex: 1; overflow: hidden; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            min-width: 280px;
+            background: var(--bg-elevated);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-section {
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-section h3 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .folder-box {
+            padding: 14px;
+            border: 2px dashed var(--border);
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .folder-box p { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+
+        .filter-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .filter-row select {
+            flex: 1;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-hover);
+            color: var(--text);
+            font-size: 12px;
+        }
+
+        .filter-check label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            margin-bottom: 4px;
+        }
+
+        .account-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 8px 8px;
+        }
+
+        .account-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--text-secondary);
+            transition: background 0.12s;
+        }
+
+        .account-item:hover { background: var(--bg-hover); color: var(--text); }
+        .account-item.active { background: var(--bg-hover); color: var(--accent); font-weight: 600; }
+
+        .account-count {
+            font-size: 11px;
+            color: var(--text-muted);
+            background: var(--bg-hover);
+            padding: 2px 7px;
+            border-radius: 10px;
+        }
+
+        .account-item.active .account-count { background: rgba(225,48,108,0.15); color: var(--accent); }
+
+        /* Library grid */
+        .library {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2px;
+            scroll-behavior: smooth;
+            position: relative;
+            min-height: 0;
+        }
+
+        .library .grid {
+            display: none;
+        }
+
+        .library.has-media .grid {
+            display: grid;
+        }
+
+        .library.has-media .empty-state {
+            display: none !important;
+        }
+
+        .grid {
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 2px;
+        }
+
+        .grid-item {
+            position: relative;
+            aspect-ratio: 9/16;
+            background: var(--bg-card);
+            cursor: pointer;
+            overflow: hidden;
+            group: grid-item;
+        }
+
+        .grid-item::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(0,0,0,0);
+            transition: background 0.15s;
+            pointer-events: none;
+        }
+
+        .grid-item:hover::after { background: rgba(0,0,0,0.25); }
+
+        .grid-item.selected {
+            outline: 2px solid var(--accent);
+            outline-offset: -2px;
+            z-index: 1;
+        }
+
+        .grid-item .grid-thumb {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            pointer-events: none;
+        }
+
+        .grid-item .grid-thumb.loading {
+            opacity: 0;
+        }
+
+        .grid-item .grid-thumb.loaded {
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        .grid-item .placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-hover);
+            font-size: 28px;
+            color: var(--text-muted);
+        }
+
+        .grid-item .play-icon {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            opacity: 0;
+            transition: opacity 0.15s;
+            pointer-events: none;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.6);
+        }
+
+        .grid-item:hover .play-icon { opacity: 1; }
+
+        .grid-item .fav-badge {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            font-size: 14px;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+        }
+
+        .grid-item .meta {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px 8px 6px;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            font-size: 11px;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0;
+            transition: opacity 0.15s;
+        }
+
+        .grid-item:hover .meta { opacity: 1; }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100%;
+            padding: 40px;
+            text-align: center;
+            color: var(--text-secondary);
+        }
+
+        .empty-state h2 {
+            font-size: 22px;
+            margin-bottom: 8px;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .empty-state p { font-size: 14px; max-width: 400px; margin-bottom: 16px; }
+
+        /* Video player modal */
+        .player-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.92);
+            z-index: 200;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .player-overlay.open { display: flex; }
+
+        .player-container {
+            position: relative;
+            width: min(420px, 100vw);
+            height: min(90vh, 820px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .player-video-wrap {
+            flex: 1;
+            position: relative;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .player-video-wrap video,
+        .player-video-wrap img {
+            max-width: 100%;
+            max-height: 100%;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .player-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.12);
+            border: none;
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 22px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: background 0.15s;
+            z-index: 2;
+        }
+
+        .player-nav:hover { background: rgba(255,255,255,0.25); }
+        .player-nav.prev { left: -56px; }
+        .player-nav.next { right: -56px; }
+
+        .player-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 0;
+            flex-wrap: wrap;
+        }
+
+        .player-info { flex: 1; min-width: 0; }
+        .player-info .username { font-weight: 600; font-size: 14px; }
+        .player-info .filename { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .player-close {
+            position: absolute;
+            top: -44px;
+            right: 0;
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 28px;
+            cursor: pointer;
+            opacity: 0.8;
+        }
+
+        .player-close:hover { opacity: 1; }
+
+        /* Reels mode */
+        .reels-overlay {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 300;
+            display: none;
+        }
+
+        .reels-overlay.open { display: block; }
+
+        .reels-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            z-index: 310;
+            background: linear-gradient(rgba(0,0,0,0.6), transparent);
+        }
+
+        .reels-header span { font-weight: 600; font-size: 15px; color: #fff; }
+
+        .reels-close {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+        }
+
+        .reels-feed {
+            height: 100vh;
+            overflow-y: scroll;
+            scroll-snap-type: y mandatory;
+            scrollbar-width: none;
+        }
+
+        .reels-feed::-webkit-scrollbar { display: none; }
+
+        .reel-slide {
+            height: 100vh;
+            width: 100%;
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #000;
+        }
+
+        .reel-slide video,
+        .reel-slide img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .reel-info {
+            position: absolute;
+            bottom: 80px;
+            left: 16px;
+            right: 70px;
+            color: #fff;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+            pointer-events: none;
+        }
+
+        .reel-info .username { font-weight: 700; font-size: 15px; margin-bottom: 4px; }
+        .reel-info .path { font-size: 12px; opacity: 0.75; }
+
+        .reel-actions {
+            position: absolute;
+            right: 12px;
+            bottom: 100px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .reel-action-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            font-size: 26px;
+            cursor: pointer;
+            filter: drop-shadow(0 1px 3px rgba(0,0,0,0.6));
+            transition: transform 0.12s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+        }
+
+        .reel-action-btn span.label { font-size: 10px; }
+        .reel-action-btn:hover { transform: scale(1.1); }
+        .reel-action-btn.favorited { color: var(--accent); }
+
+        .reels-hint {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255,255,255,0.5);
+            font-size: 12px;
+            z-index: 310;
+            pointer-events: none;
+        }
+
+        .reels-mute-btn.active { background: rgba(225,48,108,0.35); }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            z-index: 500;
+            opacity: 0;
+            transition: opacity 0.25s, transform 0.25s;
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* Progress bar */
+        .progress-bar {
+            height: 3px;
+            background: var(--bg-hover);
+            flex-shrink: 0;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--gradient);
+            width: 0%;
+            transition: width 0.2s;
+        }
+
+        .kbd-hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 8px;
+            line-height: 1.8;
+        }
+
+        kbd {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-size: 10px;
+            font-family: inherit;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .sidebar.mobile-open {
+                display: flex;
+                position: fixed;
+                inset: 0;
+                top: 52px;
+                z-index: 100;
+                width: 100%;
+                min-width: unset;
+            }
+            .player-nav.prev { left: 8px; }
+            .player-nav.next { right: 8px; }
+            .player-close { top: 8px; right: 8px; position: fixed; z-index: 210; }
+            .grid { grid-template-columns: repeat(3, 1fr); }
+            .header-search { max-width: none; }
+        }
+
+        @media (max-width: 480px) {
+            .grid { grid-template-columns: repeat(2, 1fr); }
+            .logo { font-size: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="header">
+            <button class="btn-ghost btn-sm" id="sidebarToggle" title="Toggle filters">☰</button>
+            <div class="logo">Instagram Viewer</div>
+            <div class="header-search">
+                <input type="text" id="searchInput" placeholder="Search videos & accounts…" />
+            </div>
+            <div class="header-actions">
+                <button class="btn-ghost btn-sm" id="selectFolderBtn">📁 Folder</button>
+                <button class="btn-ghost btn-sm" id="refreshBtn" title="Re-scan folder">↻</button>
+                <button class="btn-ghost btn-sm" id="favoritesBtn" title="Favorites only">♡</button>
+                <button class="btn-ghost btn-sm" id="themeToggle" title="Toggle theme">☀️</button>
+                <button class="btn btn-reels" id="reelsBtn">▶ Reels</button>
+                <button class="btn-ghost btn-sm" id="shuffleGridBtn" title="Shuffle library">🔀</button>
+            </div>
+        </header>
+
+        <div class="progress-bar" id="progressBar" hidden>
+            <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div class="status-bar" id="statusBar">Select a folder with your saved media to get started</div>
+
+        <div class="main">
+            <aside class="sidebar" id="sidebar">
+                <div class="sidebar-section">
+                    <div class="folder-box">
+                        <button class="btn" id="selectFolderBtn2">Select Folder</button>
+                        <p>Pick any folder — subfolders are scanned automatically</p>
+                    </div>
+                </div>
+                <div class="sidebar-section">
+                    <h3>Sort & Filter</h3>
+                    <div class="filter-row">
+                        <select id="sortBy">
+                            <option value="random">Random</option>
+                            <option value="date">Date</option>
+                            <option value="name">Name</option>
+                            <option value="username">Account</option>
+                            <option value="size">Size</option>
+                        </select>
+                        <select id="sortDir">
+                            <option value="desc">Newest</option>
+                            <option value="asc">Oldest</option>
+                        </select>
+                    </div>
+                    <div class="filter-row">
+                        <select id="mediaFilter">
+                            <option value="all" selected>Videos + images</option>
+                            <option value="video">Videos only</option>
+                            <option value="image">Images only</option>
+                        </select>
+                    </div>
+                    <div class="filter-check">
+                        <label><input type="checkbox" id="favoritesOnly" /> Favorites only</label>
+                    </div>
+                    <div class="kbd-hint">
+                        <kbd>j</kbd>/<kbd>k</kbd> navigate · <kbd>/</kbd> search · <kbd>f</kbd> favorite · <kbd>r</kbd> reels · <kbd>Del</kbd> delete
+                    </div>
+                </div>
+                <div class="sidebar-section" style="padding-bottom:4px;border-bottom:none">
+                    <h3>Accounts <span id="accountCount"></span></h3>
+                </div>
+                <div class="account-list" id="accountList"></div>
+            </aside>
+
+            <div class="library" id="library">
+                <div class="empty-state" id="emptyState">
+                    <h2>Your Instagram Library</h2>
+                    <p>Browse, watch, and scroll through your saved Instagram videos offline — just like the app.</p>
+                    <button class="btn" id="selectFolderBtn3">Select Media Folder</button>
+                    <p style="margin-top:16px;font-size:12px;color:var(--text-muted)">Scans all subfolders · Videos, images (.jpg, .webp, .png) · Chrome/Edge</p>
+                </div>
+                <div class="grid" id="grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Player modal -->
+    <div class="player-overlay" id="playerOverlay">
+        <div class="player-container">
+            <button class="player-close" id="playerClose" aria-label="Close">&times;</button>
+            <div class="player-video-wrap" id="playerWrap"></div>
+            <div class="player-toolbar">
+                <div class="player-info">
+                    <div class="username" id="playerUsername"></div>
+                    <div class="filename" id="playerFilename"></div>
+                </div>
+                <button class="btn-ghost btn-sm" id="playerFavBtn" title="Favorite">♡</button>
+                <button class="btn-ghost btn-sm" id="playerDeleteBtn" title="Delete">🗑</button>
+                <button class="btn-ghost btn-sm" id="playerReelsBtn" title="Open in Reels">▶ Reels</button>
+            </div>
+            <button class="player-nav prev" id="playerPrev" aria-label="Previous">&#8249;</button>
+            <button class="player-nav next" id="playerNext" aria-label="Next">&#8250;</button>
+        </div>
+    </div>
+
+    <!-- Reels overlay -->
+    <div class="reels-overlay" id="reelsOverlay">
+        <div class="reels-header">
+            <span id="reelsTitle">Reels</span>
+            <div style="display:flex;gap:8px;align-items:center">
+                <button class="reels-close reels-mute-btn active" id="reelsMuteBtn" title="Toggle sound" style="font-size:14px;width:auto;padding:0 12px;border-radius:18px">🔊</button>
+                <button class="reels-close" id="reelsShuffleBtn" title="Shuffle" style="font-size:14px;width:auto;padding:0 12px;border-radius:18px">🔀</button>
+                <button class="reels-close" id="reelsClose" aria-label="Close">&times;</button>
+            </div>
+        </div>
+        <div class="reels-feed" id="reelsFeed"></div>
+        <div class="reels-hint">Random mix · Scroll ↑↓ · 🔀 to reshuffle</div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    (function () {
+        'use strict';
+
+        const VIDEO_EXTS = new Set(['.mp4', '.webm', '.mov', '.m4v']);
+        const IMAGE_EXTS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic']);
+        const DB_NAME = 'instagram-viewer-db';
+        const DB_VERSION = 2;
+        const STATE_KEY = 'instagram-viewer-state';
+        const supportsFSA = 'showDirectoryPicker' in window;
+
+        let directoryHandle = null;
+        let allMedia = [];
+        let filteredMedia = [];
+        let reelsList = [];
+        let currentIndex = -1;
+        let blobUrls = new Map();
+        let thumbUrls = new Map();
+        let thumbCacheDb = null;
+        let state = loadState();
+        let reelsObserver = null;
+        let reelsSoundEnabled = true;
+        let activeReelVideo = null;
+        let selectedIndex = 0;
+        let reelsShuffled = false;
+
+        const filters = {
+            search: '',
+            account: null,
+            mediaType: 'all',
+            favoritesOnly: false
+        };
+
+        // ── DOM refs ──
+        const $ = (id) => document.getElementById(id);
+        const statusBar = $('statusBar');
+        const progressBar = $('progressBar');
+        const progressFill = $('progressFill');
+        const emptyState = $('emptyState');
+        const grid = $('grid');
+        const library = $('library');
+        const accountList = $('accountList');
+        const playerOverlay = $('playerOverlay');
+        const playerWrap = $('playerWrap');
+        const reelsOverlay = $('reelsOverlay');
+        const reelsFeed = $('reelsFeed');
+
+        // ── Init ──
+        async function init() {
+            applyTheme();
+            filters.mediaType = state.mediaFilter || 'all';
+            if (state.sortBy === 'date') {
+                state.sortBy = 'random';
+                saveState();
+            }
+            bindEvents();
+            if (!supportsFSA) {
+                setStatus('File System Access API not supported. Use Chrome or Edge.');
+                disableFolderButtons();
+                return;
+            }
+            setStatus('Restoring folder…');
+            await tryRestoreDirectory();
+        }
+
+        function bindEvents() {
+            ['selectFolderBtn', 'selectFolderBtn2', 'selectFolderBtn3'].forEach(id => {
+                $(id).addEventListener('click', selectDirectory);
+            });
+            $('refreshBtn').addEventListener('click', () => loadDirectory(true));
+            $('searchInput').addEventListener('input', e => { filters.search = e.target.value; selectedIndex = 0; applyFilters(); });
+            $('sortBy').addEventListener('change', e => { state.sortBy = e.target.value; saveState(); applyFilters(); });
+            $('sortDir').addEventListener('change', e => { state.sortDir = e.target.value; saveState(); applyFilters(); });
+            $('mediaFilter').addEventListener('change', e => {
+                filters.mediaType = e.target.value;
+                state.mediaFilter = e.target.value;
+                saveState();
+                selectedIndex = 0;
+                applyFilters();
+            });
+            $('favoritesOnly').addEventListener('change', e => { filters.favoritesOnly = e.target.checked; selectedIndex = 0; applyFilters(); });
+            $('favoritesBtn').addEventListener('click', toggleFavoritesFilter);
+            $('themeToggle').addEventListener('click', toggleTheme);
+            $('reelsBtn').addEventListener('click', () => { unlockReelsAudio(); openReels(); });
+            $('shuffleGridBtn').addEventListener('click', shuffleLibrary);
+            $('sidebarToggle').addEventListener('click', () => $('sidebar').classList.toggle('mobile-open'));
+
+            $('playerClose').addEventListener('click', closePlayer);
+            $('playerPrev').addEventListener('click', () => navigatePlayer(-1));
+            $('playerNext').addEventListener('click', () => navigatePlayer(1));
+            $('playerFavBtn').addEventListener('click', toggleCurrentFavorite);
+            $('playerDeleteBtn').addEventListener('click', deleteCurrentMedia);
+            $('playerReelsBtn').addEventListener('click', () => { unlockReelsAudio(); closePlayer(); openReels(); });
+
+            $('reelsClose').addEventListener('click', closeReels);
+            $('reelsShuffleBtn').addEventListener('click', () => { closeReels(); openReels(); });
+            $('reelsMuteBtn').addEventListener('click', toggleReelsSound);
+
+            playerOverlay.addEventListener('click', e => { if (e.target === playerOverlay) closePlayer(); });
+
+            document.addEventListener('keydown', onKeyDown);
+        }
+
+        function onKeyDown(e) {
+            const tag = document.activeElement?.tagName;
+            const typing = tag === 'INPUT' || tag === 'TEXTAREA';
+
+            if (e.key === '/' && !typing) { e.preventDefault(); $('searchInput').focus(); return; }
+            if (typing) return;
+
+            if (reelsOverlay.classList.contains('open')) {
+                if (e.key === 'Escape') closeReels();
+                if (e.key === ' ') { e.preventDefault(); toggleReelsPlayback(); }
+                return;
+            }
+
+            if (playerOverlay.classList.contains('open')) {
+                if (e.key === 'Escape') closePlayer();
+                if (e.key === 'ArrowLeft') navigatePlayer(-1);
+                if (e.key === 'ArrowRight') navigatePlayer(1);
+                if (e.key === 'f') toggleCurrentFavorite();
+                if (e.key === 'Delete') deleteCurrentMedia();
+                return;
+            }
+
+            if (filteredMedia.length === 0) return;
+            if (e.key === 'j' || e.key === 'ArrowDown') { e.preventDefault(); openPlayer(Math.min(currentIndex + 1, filteredMedia.length - 1)); }
+            if (e.key === 'k' || e.key === 'ArrowUp') { e.preventDefault(); openPlayer(Math.max(currentIndex - 1, 0)); }
+            if (e.key === 'f' && currentIndex >= 0) toggleCurrentFavorite();
+            if (e.key === 'r') { unlockReelsAudio(); openReels(); }
+            if (e.key === 'Delete' && currentIndex >= 0) deleteCurrentMedia();
+        }
+
+        // ── Storage ──
+        function loadState() {
+            try {
+                return { ...getDefaultState(), ...JSON.parse(localStorage.getItem(STATE_KEY)) };
+            } catch { return getDefaultState(); }
+        }
+
+        function saveState() {
+            localStorage.setItem(STATE_KEY, JSON.stringify(state));
+        }
+
+        function getDefaultState() {
+            return { favorites: {}, sortBy: 'random', sortDir: 'desc', theme: 'dark', lastAccount: null, mediaFilter: 'all' };
+        }
+
+        async function openDB() {
+            if (thumbCacheDb) return thumbCacheDb;
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(DB_NAME, DB_VERSION);
+                req.onupgradeneeded = e => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('handles')) {
+                        db.createObjectStore('handles');
+                    }
+                    if (!db.objectStoreNames.contains('thumbnails')) {
+                        db.createObjectStore('thumbnails');
+                    }
+                };
+                req.onsuccess = () => {
+                    thumbCacheDb = req.result;
+                    resolve(thumbCacheDb);
+                };
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function getCachedThumbnail(key) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('thumbnails', 'readonly');
+                const req = tx.objectStore('thumbnails').get(key);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        async function setCachedThumbnail(key, blob) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('thumbnails', 'readwrite');
+                tx.objectStore('thumbnails').put(blob, key);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        function thumbCacheKey(item) {
+            return `${item.id}|${item.size}|${item.date}`;
+        }
+
+        async function saveDirectoryHandle(handle) {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('handles', 'readwrite');
+                tx.objectStore('handles').put(handle, 'main');
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        async function loadDirectoryHandle() {
+            const db = await openDB();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction('handles', 'readonly');
+                const req = tx.objectStore('handles').get('main');
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        // ── Theme ──
+        function applyTheme() {
+            document.documentElement.setAttribute('data-theme', state.theme);
+            $('themeToggle').textContent = state.theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        function toggleTheme() {
+            state.theme = state.theme === 'dark' ? 'light' : 'dark';
+            saveState();
+            applyTheme();
+        }
+
+        function toggleFavoritesFilter() {
+            filters.favoritesOnly = !filters.favoritesOnly;
+            selectedIndex = 0;
+            $('favoritesOnly').checked = filters.favoritesOnly;
+            $('favoritesBtn').classList.toggle('active', filters.favoritesOnly);
+            applyFilters();
+        }
+
+        // ── Folder ──
+        function disableFolderButtons() {
+            ['selectFolderBtn', 'selectFolderBtn2', 'selectFolderBtn3', 'refreshBtn'].forEach(id => {
+                const el = $(id);
+                if (el) el.disabled = true;
+            });
+        }
+
+        function setStatus(msg, loading = false) {
+            statusBar.textContent = msg;
+            statusBar.classList.toggle('loading', loading);
+        }
+
+        async function tryRestoreDirectory() {
+            try {
+                const handle = await loadDirectoryHandle();
+                if (!handle) { setStatus('Select a folder with your saved media'); return; }
+                const perm = await handle.queryPermission({ mode: 'readwrite' });
+                if (perm === 'granted') {
+                    directoryHandle = handle;
+                    setStatus(`Restored: ${handle.name} ✓`);
+                    await loadDirectory();
+                } else {
+                    const req = await handle.requestPermission({ mode: 'readwrite' });
+                    if (req === 'granted') {
+                        directoryHandle = handle;
+                        setStatus(`Restored: ${handle.name} ✓`);
+                        await loadDirectory();
+                    } else {
+                        setStatus('Permission needed — click Select Folder');
+                    }
+                }
+            } catch {
+                setStatus('Select a folder with your saved media');
+            }
+        }
+
+        async function selectDirectory() {
+            try {
+                directoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+                await saveDirectoryHandle(directoryHandle);
+                setStatus(`Loaded: ${directoryHandle.name} ✓`);
+                await loadDirectory(true);
+            } catch (err) {
+                if (err.name !== 'AbortError') setStatus('Error: ' + err.message);
+            }
+        }
+
+        function normalizePath(path) {
+            return path.replace(/\\/g, '/').toLowerCase();
+        }
+
+        function fileStem(relativePath) {
+            return normalizePath(relativePath).replace(/\.[^./]+$/, '');
+        }
+
+        /** Remove duplicate paths and companion image files that match a video (same basename). */
+        function dedupeMedia(items) {
+            const seenPaths = new Set();
+            const unique = [];
+            for (const item of items) {
+                const pathKey = normalizePath(item.id);
+                if (seenPaths.has(pathKey)) continue;
+                seenPaths.add(pathKey);
+                unique.push(item);
+            }
+
+            const byStem = new Map();
+            for (const item of unique) {
+                const stem = fileStem(item.relativePath);
+                const prev = byStem.get(stem);
+                if (!prev) {
+                    byStem.set(stem, item);
+                    continue;
+                }
+                const rank = (m) => (m.isVideo ? 2 : 1);
+                if (rank(item) > rank(prev)) {
+                    byStem.set(stem, item);
+                } else if (rank(item) === rank(prev) && item.size > prev.size) {
+                    byStem.set(stem, item);
+                }
+            }
+            return [...byStem.values()];
+        }
+
+        function dedupeById(items) {
+            const seen = new Set();
+            return items.filter(item => {
+                const key = normalizePath(item.id);
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+
+        function reelSlideExists(item) {
+            return [...reelsFeed.querySelectorAll('.reel-slide')].some(s => s.dataset.mediaId === item.id);
+        }
+
+        // ── Scan files ──
+        async function collectMediaFiles(dirHandle, basePath = '', parentHandle = dirHandle) {
+            const files = [];
+            for await (const entry of dirHandle.values()) {
+                const rel = basePath ? `${basePath}/${entry.name}` : entry.name;
+                if (entry.kind === 'file') {
+                    const ext = getExt(entry.name);
+                    if (VIDEO_EXTS.has(ext) || IMAGE_EXTS.has(ext)) {
+                        files.push({ handle: entry, relativePath: rel, parentHandle: dirHandle, name: entry.name, ext });
+                    }
+                } else if (entry.kind === 'directory') {
+                    const sub = await collectMediaFiles(entry, rel, entry);
+                    files.push(...sub);
+                }
+            }
+            return files;
+        }
+
+        function getExt(name) {
+            const i = name.lastIndexOf('.');
+            return i >= 0 ? name.slice(i).toLowerCase() : '';
+        }
+
+        function parseUsername(name) {
+            const base = name.replace(/\.[^.]+$/, '');
+            const m = base.match(/^(.+?)_\d/);
+            if (m) return m[1];
+            const parts = base.split('_');
+            return parts[0] || 'unknown';
+        }
+
+        function parseDate(name, lastModified) {
+            const dateMatch = name.match(/(\d{4}-\d{2}-\d{2})/);
+            if (dateMatch) return new Date(dateMatch[1]).getTime();
+            const tsMatch = name.match(/_(\d{10})_/);
+            if (tsMatch) return parseInt(tsMatch[1], 10) * 1000;
+            return lastModified;
+        }
+
+        async function loadDirectory(force = false) {
+            if (!directoryHandle) return;
+            revokeAllBlobUrls();
+            allMedia = [];
+            setStatus('Scanning folder…', true);
+            progressBar.hidden = false;
+            progressFill.style.width = '0%';
+
+            try {
+                const raw = await collectMediaFiles(directoryHandle);
+                let loaded = 0;
+
+                for (const item of raw) {
+                    try {
+                        const file = await item.handle.getFile();
+                        const isVideo = VIDEO_EXTS.has(item.ext);
+                        allMedia.push({
+                            id: item.relativePath,
+                            name: item.name,
+                            relativePath: item.relativePath,
+                            handle: item.handle,
+                            parentHandle: item.parentHandle,
+                            username: parseUsername(item.name),
+                            folder: item.relativePath.includes('/') ? item.relativePath.split('/')[0] : null,
+                            date: parseDate(item.name, file.lastModified),
+                            size: file.size,
+                            isVideo,
+                            isImage: !isVideo
+                        });
+                    } catch (err) {
+                        console.warn('Skip file:', item.relativePath, err);
+                    }
+                    loaded++;
+                    if (loaded % 50 === 0 || loaded === raw.length) {
+                        progressFill.style.width = `${(loaded / raw.length) * 100}%`;
+                        setStatus(`Scanning… ${loaded}/${raw.length}`, true);
+                    }
+                }
+
+                allMedia = dedupeMedia(allMedia);
+
+                progressBar.hidden = true;
+                $('sortBy').value = state.sortBy;
+                $('sortDir').value = state.sortDir;
+                filters.mediaType = state.mediaFilter || 'all';
+                $('mediaFilter').value = filters.mediaType;
+                applyFilters();
+                const subfolderCount = new Set(allMedia.filter(m => m.folder).map(m => m.folder)).size;
+                const inSubfolders = allMedia.filter(m => m.folder).length;
+                const videoCount = allMedia.filter(m => m.isVideo).length;
+                const imageCount = allMedia.filter(m => m.isImage).length;
+                setStatus(`Loaded ${allMedia.length} files (${videoCount} videos, ${imageCount} images) · ${inSubfolders} in ${subfolderCount} subfolders`);
+            } catch (err) {
+                progressBar.hidden = true;
+                setStatus('Error: ' + err.message);
+            }
+        }
+
+        // ── Filters ──
+        function applyFilters() {
+            let items = [...allMedia];
+
+            if (filters.mediaType === 'video') items = items.filter(m => m.isVideo);
+            else if (filters.mediaType === 'image') items = items.filter(m => m.isImage);
+
+            if (filters.account) items = items.filter(m => m.username === filters.account);
+            if (filters.favoritesOnly) items = items.filter(m => state.favorites[m.id]);
+            if (filters.search) {
+                const q = filters.search.toLowerCase();
+                items = items.filter(m =>
+                    m.name.toLowerCase().includes(q) ||
+                    m.username.toLowerCase().includes(q) ||
+                    (m.folder && m.folder.toLowerCase().includes(q)) ||
+                    m.relativePath.toLowerCase().includes(q)
+                );
+            }
+
+            items.sort((a, b) => {
+                let cmp = 0;
+                switch (state.sortBy) {
+                    case 'name': cmp = a.name.localeCompare(b.name); break;
+                    case 'username': cmp = a.username.localeCompare(b.username); break;
+                    case 'size': cmp = a.size - b.size; break;
+                    case 'random': cmp = 0; break;
+                    default: cmp = a.date - b.date;
+                }
+                return state.sortDir === 'asc' ? cmp : -cmp;
+            });
+
+            if (state.sortBy === 'random') {
+                items = shuffleArray(items);
+            }
+
+            filteredMedia = dedupeById(items);
+            buildAccountList();
+            renderGrid();
+        }
+
+        function buildAccountList() {
+            const counts = {};
+            const source = filters.mediaType === 'video'
+                ? allMedia.filter(m => m.isVideo)
+                : filters.mediaType === 'image'
+                    ? allMedia.filter(m => m.isImage)
+                    : allMedia;
+
+            source.forEach(m => { counts[m.username] = (counts[m.username] || 0) + 1; });
+            const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+            $('accountCount').textContent = `(${sorted.length})`;
+
+            accountList.innerHTML = `
+                <div class="account-item ${!filters.account ? 'active' : ''}" data-account="">
+                    All accounts <span class="account-count">${source.length}</span>
+                </div>
+                ${sorted.map(([name, count]) => `
+                    <div class="account-item ${filters.account === name ? 'active' : ''}" data-account="${esc(name)}">
+                        @${esc(name)} <span class="account-count">${count}</span>
+                    </div>
+                `).join('')}
+            `;
+
+            accountList.querySelectorAll('.account-item').forEach(el => {
+                el.addEventListener('click', () => {
+                    filters.account = el.dataset.account || null;
+                    selectedIndex = 0;
+                    applyFilters();
+                });
+            });
+        }
+
+        // ── Grid rendering with lazy thumbnails ──
+        let gridObserver = null;
+
+        function setLibraryView(hasMedia) {
+            library.classList.toggle('has-media', hasMedia);
+        }
+
+        function renderGrid() {
+            if (filteredMedia.length === 0) {
+                setLibraryView(false);
+                emptyState.querySelector('p').textContent = allMedia.length === 0
+                    ? 'Browse, watch, and scroll through your saved Instagram videos offline — just like the app.'
+                    : 'No media matches your filters.';
+                grid.innerHTML = '';
+                return;
+            }
+
+            setLibraryView(true);
+            if (selectedIndex >= filteredMedia.length) selectedIndex = 0;
+
+            grid.innerHTML = '';
+
+            if (gridObserver) gridObserver.disconnect();
+            gridObserver = new IntersectionObserver(onGridIntersect, { root: library, rootMargin: '200px' });
+
+            filteredMedia.forEach((item, index) => {
+                const el = document.createElement('div');
+                el.className = 'grid-item' + (index === selectedIndex ? ' selected' : '');
+                el.dataset.index = index;
+                el.dataset.mediaId = item.id;
+                el.innerHTML = `
+                    <div class="placeholder">${item.isVideo ? '▶' : '🖼'}</div>
+                    <img class="grid-thumb loading" alt="" hidden />
+                    <span class="play-icon">${item.isVideo ? '▶' : ''}</span>
+                    ${state.favorites[item.id] ? '<span class="fav-badge">❤️</span>' : ''}
+                    <div class="meta">@${esc(item.username)}</div>
+                `;
+                el.addEventListener('click', () => {
+                    selectedIndex = index;
+                    grid.querySelectorAll('.grid-item.selected').forEach(n => n.classList.remove('selected'));
+                    el.classList.add('selected');
+                    openPlayer(index);
+                });
+                grid.appendChild(el);
+                gridObserver.observe(el);
+            });
+
+            library.scrollTop = 0;
+
+            setStatus(`${filteredMedia.length} of ${allMedia.length} files${filters.account ? ` · @${filters.account}` : ''}`);
+        }
+
+        async function onGridIntersect(entries) {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                const el = entry.target;
+                if (el.dataset.loaded) continue;
+                el.dataset.loaded = '1';
+                gridObserver.unobserve(el);
+
+                const index = parseInt(el.dataset.index, 10);
+                const item = filteredMedia[index];
+                if (!item) continue;
+
+                const placeholder = el.querySelector('.placeholder');
+                const thumbImg = el.querySelector('.grid-thumb');
+
+                try {
+                    const thumbUrl = await getThumbnailUrl(item);
+                    thumbImg.src = thumbUrl;
+                    thumbImg.hidden = false;
+                    thumbImg.classList.remove('loading');
+                    thumbImg.classList.add('loaded');
+                    placeholder.remove();
+                } catch (err) {
+                    console.warn('Thumbnail failed:', item.name, err);
+                }
+            }
+        }
+
+        async function getThumbnailUrl(item) {
+            if (thumbUrls.has(item.id)) return thumbUrls.get(item.id);
+
+            if (item.isImage) {
+                const file = await item.handle.getFile();
+                const url = URL.createObjectURL(file);
+                thumbUrls.set(item.id, url);
+                return url;
+            }
+
+            const cacheKey = thumbCacheKey(item);
+            try {
+                const cached = await getCachedThumbnail(cacheKey);
+                if (cached) {
+                    const url = URL.createObjectURL(cached);
+                    thumbUrls.set(item.id, url);
+                    return url;
+                }
+            } catch { /* cache miss */ }
+
+            const file = await item.handle.getFile();
+            const videoUrl = URL.createObjectURL(file);
+            try {
+                const thumbBlob = await captureVideoFrame(videoUrl);
+                try { await setCachedThumbnail(cacheKey, thumbBlob); } catch { /* quota */ }
+                const thumbUrl = URL.createObjectURL(thumbBlob);
+                thumbUrls.set(item.id, thumbUrl);
+                return thumbUrl;
+            } finally {
+                URL.revokeObjectURL(videoUrl);
+            }
+        }
+
+        function captureVideoFrame(videoUrl) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                video.muted = true;
+                video.playsInline = true;
+                video.preload = 'auto';
+                video.crossOrigin = 'anonymous';
+
+                const cleanup = () => {
+                    video.removeAttribute('src');
+                    video.load();
+                };
+
+                video.addEventListener('loadeddata', () => {
+                    const seekTo = video.duration && isFinite(video.duration)
+                        ? Math.min(0.5, Math.max(0.05, video.duration * 0.08))
+                        : 0.1;
+                    video.currentTime = seekTo;
+                }, { once: true });
+
+                video.addEventListener('seeked', () => {
+                    try {
+                        const w = video.videoWidth || 360;
+                        const h = video.videoHeight || 640;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+                        canvas.toBlob(blob => {
+                            cleanup();
+                            blob ? resolve(blob) : reject(new Error('Could not capture frame'));
+                        }, 'image/jpeg', 0.82);
+                    } catch (err) {
+                        cleanup();
+                        reject(err);
+                    }
+                }, { once: true });
+
+                video.addEventListener('error', () => {
+                    cleanup();
+                    reject(new Error('Video load failed'));
+                }, { once: true });
+
+                video.src = videoUrl;
+            });
+        }
+
+        // ── Blob URL management ──
+        async function getBlobUrl(item) {
+            if (blobUrls.has(item.id)) return blobUrls.get(item.id);
+            const file = await item.handle.getFile();
+            const url = URL.createObjectURL(file);
+            blobUrls.set(item.id, url);
+            return url;
+        }
+
+        function revokeAllBlobUrls() {
+            const all = new Set([...blobUrls.values(), ...thumbUrls.values()]);
+            all.forEach(url => URL.revokeObjectURL(url));
+            blobUrls.clear();
+            thumbUrls.clear();
+        }
+
+        // ── Player ──
+        async function openPlayer(index) {
+            if (index < 0 || index >= filteredMedia.length) return;
+            currentIndex = index;
+            selectedIndex = index;
+            highlightSelectedGridItem();
+            const item = filteredMedia[index];
+
+            playerWrap.innerHTML = '<div style="color:#fff;padding:20px">Loading…</div>';
+            playerOverlay.classList.add('open');
+            $('playerUsername').textContent = '@' + item.username;
+            $('playerFilename').textContent = item.relativePath;
+            updateFavButton();
+
+            try {
+                const url = await getBlobUrl(item);
+                playerWrap.innerHTML = '';
+                if (item.isVideo) {
+                    const vid = document.createElement('video');
+                    vid.src = url;
+                    vid.controls = true;
+                    vid.autoplay = true;
+                    vid.playsInline = true;
+                    vid.loop = true;
+                    playerWrap.appendChild(vid);
+                } else {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = item.name;
+                    playerWrap.appendChild(img);
+                }
+            } catch (err) {
+                playerWrap.innerHTML = `<div style="color:var(--danger);padding:20px">Failed to load: ${esc(err.message)}</div>`;
+            }
+        }
+
+        function closePlayer() {
+            playerOverlay.classList.remove('open');
+            playerWrap.querySelector('video')?.pause();
+            playerWrap.innerHTML = '';
+        }
+
+        function navigatePlayer(dir) {
+            const next = currentIndex + dir;
+            if (next >= 0 && next < filteredMedia.length) openPlayer(next);
+        }
+
+        function updateFavButton() {
+            const item = filteredMedia[currentIndex];
+            const btn = $('playerFavBtn');
+            if (!item) return;
+            const fav = !!state.favorites[item.id];
+            btn.textContent = fav ? '❤️' : '♡';
+            btn.title = fav ? 'Unfavorite' : 'Favorite';
+        }
+
+        function toggleCurrentFavorite() {
+            const item = filteredMedia[currentIndex];
+            if (!item) return;
+            if (state.favorites[item.id]) delete state.favorites[item.id];
+            else state.favorites[item.id] = Date.now();
+            saveState();
+            updateFavButton();
+            renderGrid();
+            toast(state.favorites[item.id] ? 'Added to favorites' : 'Removed from favorites');
+        }
+
+        // ── Delete ──
+        async function deleteCurrentMedia() {
+            const item = filteredMedia[currentIndex];
+            if (!item) return;
+
+            if (!confirm(`Delete this file?\n\n${item.relativePath}\n\nThis permanently removes it from disk.`)) return;
+
+            try {
+                const perm = await directoryHandle.requestPermission({ mode: 'readwrite' });
+                if (perm !== 'granted') { toast('Write permission required'); return; }
+
+                await item.parentHandle.removeEntry(item.name);
+
+                if (blobUrls.has(item.id)) {
+                    URL.revokeObjectURL(blobUrls.get(item.id));
+                    blobUrls.delete(item.id);
+                }
+                delete state.favorites[item.id];
+                saveState();
+
+                allMedia = allMedia.filter(m => m.id !== item.id);
+                closePlayer();
+                applyFilters();
+                toast('File deleted');
+            } catch (err) {
+                toast('Delete failed: ' + err.message);
+            }
+        }
+
+        // ── Reels ──
+        function unlockReelsAudio() {
+            reelsSoundEnabled = true;
+            try {
+                if (!window._reelsAudioCtx) {
+                    window._reelsAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (window._reelsAudioCtx.state === 'suspended') {
+                    window._reelsAudioCtx.resume();
+                }
+            } catch { /* optional */ }
+        }
+
+        function shuffleLibrary() {
+            state.sortBy = 'random';
+            saveState();
+            $('sortBy').value = 'random';
+            selectedIndex = 0;
+            applyFilters();
+            toast('Library shuffled');
+        }
+
+        function shuffleArray(arr) {
+            const a = [...arr];
+            for (let i = a.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [a[i], a[j]] = [a[j], a[i]];
+            }
+            return a;
+        }
+
+        async function openReels() {
+            const pool = dedupeById([...filteredMedia]);
+            if (pool.length === 0) { toast('No media to show'); return; }
+
+            reelsSoundEnabled = true;
+            reelsShuffled = true;
+            updateReelsMuteButton();
+
+            reelsList = shuffleArray(pool);
+            selectedIndex = filteredMedia.findIndex(m => m.id === reelsList[0]?.id);
+            if (selectedIndex < 0) selectedIndex = 0;
+            highlightSelectedGridItem();
+
+            const reelsTitle = filters.account ? `Reels · @${filters.account}` : 'Reels · Random';
+            $('reelsTitle').textContent = reelsTitle;
+
+            reelsFeed.innerHTML = '';
+            reelsOverlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            activeReelVideo = null;
+
+            const batch = reelsList.slice(0, 8);
+            for (let i = 0; i < batch.length; i++) {
+                reelsFeed.appendChild(await createReelSlide(batch[i], i));
+            }
+
+            setupReelsObserver();
+            loadMoreReels(8);
+
+            const firstVid = reelsFeed.querySelector('video');
+            if (firstVid) {
+                firstVid.muted = !reelsSoundEnabled;
+                firstVid.play().catch(() => {
+                    firstVid.muted = true;
+                    firstVid.play().catch(() => {});
+                });
+                activeReelVideo = firstVid;
+            }
+            requestAnimationFrame(() => syncActiveReel(true));
+
+            const ctx = filters.account ? `@${filters.account}` : 'library';
+            toast(`Random reels · ${ctx}`);
+        }
+
+        function highlightSelectedGridItem() {
+            grid.querySelectorAll('.grid-item').forEach(el => {
+                el.classList.toggle('selected', parseInt(el.dataset.index, 10) === selectedIndex);
+            });
+        }
+
+        function updateReelsMuteButton() {
+            const btn = $('reelsMuteBtn');
+            btn.textContent = reelsSoundEnabled ? '🔊' : '🔇';
+            btn.classList.toggle('active', reelsSoundEnabled);
+            btn.title = reelsSoundEnabled ? 'Mute' : 'Unmute';
+        }
+
+        function toggleReelsSound() {
+            reelsSoundEnabled = !reelsSoundEnabled;
+            updateReelsMuteButton();
+            if (activeReelVideo) {
+                activeReelVideo.muted = !reelsSoundEnabled;
+                if (reelsSoundEnabled) activeReelVideo.play().catch(() => {});
+            }
+            toast(reelsSoundEnabled ? 'Sound on' : 'Muted');
+        }
+
+        async function createReelSlide(item, index) {
+            const slide = document.createElement('div');
+            slide.className = 'reel-slide';
+            slide.dataset.index = index;
+            slide.dataset.mediaId = item.id;
+
+            const url = await getBlobUrl(item);
+            const isFav = !!state.favorites[item.id];
+            const mediaTag = item.isVideo
+                ? `<video src="${esc(url)}" playsinline loop preload="${index < 2 ? 'auto' : 'metadata'}"></video>`
+                : `<img src="${esc(url)}" alt="${esc(item.name)}" />`;
+
+            slide.innerHTML = `
+                ${mediaTag}
+                <div class="reel-info">
+                    <div class="username">@${esc(item.username)}</div>
+                    <div class="path">${esc(item.relativePath)}</div>
+                </div>
+                <div class="reel-actions">
+                    <button class="reel-action-btn ${isFav ? 'favorited' : ''}" data-action="fav" title="Favorite">
+                        ${isFav ? '❤️' : '♡'}<span class="label">Like</span>
+                    </button>
+                    ${item.isVideo ? '<button class="reel-action-btn" data-action="mute" title="Toggle sound">🔊<span class="label">Sound</span></button>' : ''}
+                    <button class="reel-action-btn" data-action="delete" title="Delete">🗑<span class="label">Delete</span></button>
+                </div>
+            `;
+
+            const vid = slide.querySelector('video');
+            if (vid) {
+                vid.muted = !reelsSoundEnabled;
+                vid.addEventListener('click', () => {
+                    if (vid.paused) vid.play();
+                    else vid.pause();
+                });
+            }
+
+            slide.querySelector('[data-action="fav"]').addEventListener('click', () => {
+                if (state.favorites[item.id]) delete state.favorites[item.id];
+                else state.favorites[item.id] = Date.now();
+                saveState();
+                const btn = slide.querySelector('[data-action="fav"]');
+                const fav = !!state.favorites[item.id];
+                btn.classList.toggle('favorited', fav);
+                btn.innerHTML = `${fav ? '❤️' : '♡'}<span class="label">Like</span>`;
+            });
+
+            slide.querySelector('[data-action="mute"]')?.addEventListener('click', () => {
+                reelsSoundEnabled = !reelsSoundEnabled;
+                updateReelsMuteButton();
+                reelsFeed.querySelectorAll('video').forEach(v => { v.muted = !reelsSoundEnabled; });
+                slide.querySelector('[data-action="mute"]').innerHTML =
+                    `${reelsSoundEnabled ? '🔊' : '🔇'}<span class="label">Sound</span>`;
+                toast(reelsSoundEnabled ? 'Sound on' : 'Muted');
+            });
+
+            slide.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+                if (!confirm(`Delete?\n\n${item.relativePath}`)) return;
+                try {
+                    await item.parentHandle.removeEntry(item.name);
+                    if (blobUrls.has(item.id)) { URL.revokeObjectURL(blobUrls.get(item.id)); blobUrls.delete(item.id); }
+                    delete state.favorites[item.id];
+                    saveState();
+                    allMedia = allMedia.filter(m => m.id !== item.id);
+                    reelsList = reelsList.filter(m => m.id !== item.id);
+                    slide.remove();
+                    applyFilters();
+                    toast('Deleted');
+                    if (reelsList.length === 0) closeReels();
+                } catch (err) { toast('Delete failed: ' + err.message); }
+            });
+
+            return slide;
+        }
+
+        function setupReelsObserver() {
+            if (reelsObserver) reelsObserver.disconnect();
+
+            reelsObserver = new IntersectionObserver(entries => {
+                let shouldSync = false;
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && entry.intersectionRatio >= 0.55) {
+                        shouldSync = true;
+                    }
+                });
+                if (shouldSync) syncActiveReel(false);
+            }, { root: reelsFeed, threshold: [0.55, 0.75] });
+
+            reelsFeed.querySelectorAll('.reel-slide').forEach(s => reelsObserver.observe(s));
+        }
+
+        function syncActiveReel(isInitial) {
+            const slides = [...reelsFeed.querySelectorAll('.reel-slide')];
+            let bestSlide = null;
+            let bestScore = -1;
+
+            slides.forEach(slide => {
+                const rect = slide.getBoundingClientRect();
+                const visible = Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0);
+                const score = visible / window.innerHeight;
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestSlide = slide;
+                }
+            });
+
+            activeReelVideo = null;
+            slides.forEach(slide => {
+                const vid = slide.querySelector('video');
+                if (!vid) return;
+                if (slide === bestSlide && bestScore > 0.45) {
+                    vid.muted = !reelsSoundEnabled;
+                    activeReelVideo = vid;
+                    vid.play().catch(() => {
+                        vid.muted = true;
+                        vid.play().catch(() => {});
+                    });
+                } else {
+                    vid.pause();
+                    vid.currentTime = 0;
+                }
+            });
+
+            if (isInitial && activeReelVideo && reelsSoundEnabled) {
+                activeReelVideo.muted = false;
+                activeReelVideo.play().catch(() => {});
+            }
+        }
+
+        let reelsLoadingMore = false;
+        async function loadMoreReels(fromIndex) {
+            if (reelsLoadingMore || fromIndex >= reelsList.length) return;
+            reelsLoadingMore = true;
+
+            const end = Math.min(fromIndex + 6, reelsList.length);
+            for (let i = fromIndex; i < end; i++) {
+                const item = reelsList[i];
+                if (!item || reelSlideExists(item)) continue;
+                const slide = await createReelSlide(item, i);
+                reelsFeed.appendChild(slide);
+                reelsObserver?.observe(slide);
+            }
+            reelsLoadingMore = false;
+        }
+
+        reelsFeed.addEventListener('scroll', () => {
+            syncActiveReel(false);
+            const { scrollTop, scrollHeight, clientHeight } = reelsFeed;
+            if (scrollHeight - scrollTop - clientHeight < clientHeight * 2) {
+                const current = reelsFeed.querySelectorAll('.reel-slide').length;
+                loadMoreReels(current);
+            }
+        }, { passive: true });
+
+        function closeReels() {
+            reelsOverlay.classList.remove('open');
+            reelsFeed.querySelectorAll('video').forEach(v => v.pause());
+            reelsFeed.innerHTML = '';
+            document.body.style.overflow = '';
+            activeReelVideo = null;
+            if (reelsObserver) { reelsObserver.disconnect(); reelsObserver = null; }
+        }
+
+        function toggleReelsPlayback() {
+            const visible = [...reelsFeed.querySelectorAll('.reel-slide')].find(slide => {
+                const rect = slide.getBoundingClientRect();
+                return rect.top >= -50 && rect.top < window.innerHeight / 2;
+            });
+            const vid = visible?.querySelector('video');
+            if (vid) vid.paused ? vid.play() : vid.pause();
+        }
+
+        // ── Utils ──
+        function esc(str) {
+            return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        }
+
+        let toastTimer = null;
+        function toast(msg) {
+            const el = $('toast');
+            el.textContent = msg;
+            el.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+        }
+
+        init();
+    })();
+    </script>
+</body>
+</html>
